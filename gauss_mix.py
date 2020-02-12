@@ -11,11 +11,11 @@ from imp import reload
 from copy import deepcopy
 #import seaborn as sns
 
-#os.chdir("C:\\Users\\Alexander\\Documents\\\Github\\bmm_mix")
+os.chdir("C:\\Users\\Alexander\\Documents\\Python_stuff\\gauss_mix")
 
-#from bernmix.utils import bmm_utils as bmm
+from gaussmix.utils import gmm_utils as gmm
 #os.getcwd()
-reload(bmm)
+#reload(bmm)
 
 #seed(12)
 
