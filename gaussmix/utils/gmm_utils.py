@@ -1,3 +1,4 @@
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -55,6 +56,7 @@ class mvt2mixture:
         self.sum2 = np.multiply(1-Phi, rn2)
         self.x_draws = np.add(self.sum1,self.sum2)
         return self.phi_is, self.x_draws
+
 
     def show2D(self, save_plot=False, legend_on = True, **kwargs):
         """
