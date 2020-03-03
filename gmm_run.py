@@ -5,7 +5,6 @@ from scipy.stats import wishart, multivariate_normal, bernoulli, multinomial
 #from sklearn.model_selection import train_test_split
 import os, pickle
 import numpy as np
-import pandas as pd
 #from numpy import log, sum, exp, prod
 #from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand
 from imp import reload
@@ -20,55 +19,20 @@ reload(gmm)
 
 #seed(12)
 
-p = .0005         # probab. for outlier -> 1
-k = 100           # feature dimension 
-N = 1*10**5
-
-
-bvt = gmm.mvt2mixture(thetas = {'mean1' : np.full(k,-2), 'mean2' : np.full(k,1),
-                                'Sigma1' : np.eye(k)*.3, 'Sigma2' : np.eye(k)*.5,
-                                'nu1': 3.*k, 'nu2': 3.*k}, seed = None, gaussian = True)
-
-# Get latent draws and observations:
-z_is, dataset = bvt.draw(n_samples = N, k = k, p = p)
-
-dataset.shape
-#np.mean(z_is, axis=0)
-z_is.mean()
-
-bvt.show2D(alpha = .45, edgecolor='k', save_plot = False)
-
-bvt.show3D(alpha = .45, edgecolor='k', save_plot = False)
-
- 
-l#atent = z_is #[:,2]
-dataset = pd.DataFrame(dataset)
-#data_only_outliers = dataset[latent == 1]    
-#data_no_outliers = dataset[latent == 0]
-X_design = dataset.copy()
-
-#=================================================================================
-
 N = 10**4
 K = 5           # number of mixture components
 D = 50           # dimensions / number of features     
 
+mvt = gmm.mvt_tmix()
 
+# X and true cluster assignements:
+#-----------------------------------
+X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)    
 
-
-
-
-# Generate data from mixture model:
-#------------------------------------
-# Draw from Bernoulli:
-#probs = np.random.uniform(size=10000)
-#rbern = (np.random.uniform(size=D) < mu_k[:,Z[2]]) * 1
-X, Z = bmm.sample_bmm(N, p_true, theta_true)
-
-latent_true = np.argmax(Z,1)          # true cluster assignements    
+mvt.plot(plot_type='2D')
 
 X.shape
-Z.shape
+
 
 # Set starting values for parameters:
 #----------------------------------------
