@@ -32,7 +32,7 @@ X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)
 
 mvt.plot(plot_type='2D')
 
-X.shape
+#X.shape
 
 
 # Set starting values for parameters:
