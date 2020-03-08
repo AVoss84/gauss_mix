@@ -5,8 +5,8 @@ from scipy.stats import wishart, multivariate_normal, bernoulli, multinomial
 #from sklearn.model_selection import train_test_split
 import os, pickle
 import numpy as np
-#from numpy import log, sum, exp, prod
-#from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand
+from numpy import log, sum, exp, prod
+from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand
 from imp import reload
 from copy import deepcopy
 #import seaborn as sns
@@ -20,7 +20,7 @@ reload(gmm)
 
 #seed(12)
 
-N = 10**4
+N = 10**4       # sample size
 K = 5           # number of mixture components
 D = 50           # dimensions / number of features     
 
@@ -43,9 +43,10 @@ mvt.plot(plot_type='2D')
 D = X.shape[1]
 
 alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
-p_0 = dirichlet(alpha = alphas, size = 1)[0]
+p_0 = dirichlet(alpha = alphas, size = N*K)#.reshape(N,K)
 #p_0 = np.array([1/K]*K)  
-theta_0 = beta(a = 1, b = 1, size = K*D).reshape(D,K)
+#theta_0 = beta(a = 1, b = 1, size = K*D).reshape(D,K)
+p_0
 
 #----------
 # Run EM:    
