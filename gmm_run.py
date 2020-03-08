@@ -19,8 +19,6 @@ from gaussmix.utils import gmm_utils as gmm
 os.getcwd()
 reload(gmm)
 
-#seed(12)
-
 N = 10**2       # sample size
 K = 3           # number of mixture components
 D = 10           # dimensions / number of features     
