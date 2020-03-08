@@ -10,6 +10,7 @@ from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multin
 from imp import reload
 from copy import deepcopy
 #import seaborn as sns
+import pandas as pd
 
 os.chdir("C:\\Users\\Alexander\\Documents\\GitHub\\gauss_mix")
 #os.chdir("C:\\Users\\Alexander\\Documents\\Python_stuff\\gauss_mix")   # sony
@@ -20,11 +21,11 @@ reload(gmm)
 
 #seed(12)
 
-N = 10**4       # sample size
-K = 5           # number of mixture components
-D = 50           # dimensions / number of features     
+N = 10**2       # sample size
+K = 3           # number of mixture components
+D = 10           # dimensions / number of features     
 
-mvt = gmm.mvt_tmix()
+mvt = gmm.mvt_tmix(seed=12)
 
 # X and true cluster assignements:
 #-----------------------------------
@@ -32,26 +33,48 @@ X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)
 
 mvt.plot(plot_type='2D')
 
-#X.shape
-
-
 # Set starting values for parameters:
 #----------------------------------------
 #seed(12)
 
-#K = 10           # number of mixture components
-D = X.shape[1]
-
 alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
-p_0 = dirichlet(alpha = alphas, size = N*K)#.reshape(N,K)
+r = dirichlet(alpha = alphas, size = N)
 #p_0 = np.array([1/K]*K)  
 #theta_0 = beta(a = 1, b = 1, size = K*D).reshape(D,K)
-p_0
+r.shape
+
+N_ks = r.sum(axis=0)                 # (10.51)
+N_ks.shape
+
+X.shape
+
+k=1; n=3
+
+r[n,k]*X[n,:]
+
+np.tile(np.array([1.2, 5]), (4,1))
+r_k = np.tile(r[:,k],(D,1)).T
+r_k.shape
+
+#pd.DataFrame(r).head()
+#pd.DataFrame(r_k).head()
+
+#r_k.shape
+#X.sum(axis=0).shape
+x_mean_k = np.multiply(r_k, X.sum(axis=0)).sum(axis=0)/N_ks[k]     # (10.52)
+x_mean_k.shape
+
+x_centered = (X[n,:] - x_mean_k).reshape(-1,1)
+
+x_centered.shape
+x_centered.T.shape
+
+np.matmul(x_centered, x_centered.T).shape
 
 #----------
 # Run EM:    
 #----------
-logli, p_em, theta_em = bmm.mixture_EM(X = X, p_0 = p_0, theta_0 = theta_0, n_iter = 500, stopcrit = 10**(-3))
+#logli, p_em, theta_em = bmm.mixture_EM(X = X, p_0 = p_0, theta_0 = theta_0, n_iter = 500, stopcrit = 10**(-3))
 
 
 #----------------

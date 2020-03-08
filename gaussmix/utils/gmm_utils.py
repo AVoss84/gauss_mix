@@ -102,8 +102,8 @@ class mvt2mixture:
             print("Saved to:", os.getcwd())
 
 
-
-
+# NEW!!!
+#-------------------------------------------------------------------------------------
 class mvt_tmix:
     
     def __init__(self, seed = None):
