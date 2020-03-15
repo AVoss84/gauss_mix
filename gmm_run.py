@@ -36,7 +36,7 @@ mvt.plot(plot_type='2D')
 #seed(12)
 
 alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
-r = dirichlet(alpha = alphas, size = N)
+r = dirichlet(alpha = alphas, size = N)            # inital posterior prob.
 #p_0 = np.array([1/K]*K)  
 #theta_0 = beta(a = 1, b = 1, size = K*D).reshape(D,K)
 r.shape
