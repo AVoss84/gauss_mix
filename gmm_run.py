@@ -16,8 +16,12 @@ os.chdir("C:\\Users\\Alexander\\Documents\\GitHub\\gauss_mix")
 #os.chdir("C:\\Users\\Alexander\\Documents\\Python_stuff\\gauss_mix")   # sony
 
 from gaussmix.utils import gmm_utils as gmm
+
 os.getcwd()
+
 reload(gmm)
+
+#seed(12)
 
 N = 10**2       # sample size
 K = 3           # number of mixture components
@@ -36,7 +40,7 @@ mvt.plot(plot_type='2D')
 #seed(12)
 
 alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
-r = dirichlet(alpha = alphas, size = N)            # inital posterior prob.
+r = dirichlet(alpha = alphas, size = N)
 #p_0 = np.array([1/K]*K)  
 #theta_0 = beta(a = 1, b = 1, size = K*D).reshape(D,K)
 r.shape
