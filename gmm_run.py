@@ -16,7 +16,9 @@ os.chdir("C:\\Users\\Alexander\\Documents\\GitHub\\gauss_mix")
 #os.chdir("C:\\Users\\Alexander\\Documents\\Python_stuff\\gauss_mix")   # sony
 
 from gaussmix.utils import gmm_utils as gmm
+
 os.getcwd()
+
 reload(gmm)
 
 N = 10**2       # sample size
