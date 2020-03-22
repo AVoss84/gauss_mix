@@ -19,6 +19,8 @@ from gaussmix.utils import gmm_utils as gmm
 
 os.getcwd()
 
+#os.listdir(path='.')    # list files in current directory
+
 reload(gmm)
 
 #seed(12)
