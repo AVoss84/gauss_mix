@@ -41,10 +41,13 @@ mvt.plot(plot_type='2D')
 #----------------------------------------
 #seed(12)
 
+MCsim = 1000
 beta0 = 0
 alpha0 = 1
 m0 = np.zeros((D,1))
-
+W = np.empty((D,D, MCsim))
+nu = np.empty((K,1))
+m = np.empty((D,MCsim))
 
 alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
 r = dirichlet(alpha = alphas, size = N)
