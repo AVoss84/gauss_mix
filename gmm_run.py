@@ -41,11 +41,17 @@ mvt.plot(plot_type='2D')
 #----------------------------------------
 #seed(12)
 
+beta0 = 0
+alpha0 = 1
+m0 = np.zeros((D,1))
+
+
 alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
 r = dirichlet(alpha = alphas, size = N)
 #p_0 = np.array([1/K]*K)  
 #theta_0 = beta(a = 1, b = 1, size = K*D).reshape(D,K)
 r.shape
+alphas
 
 N_ks = r.sum(axis=0)                 # (10.51)
 N_ks.shape
