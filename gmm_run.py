@@ -1,12 +1,14 @@
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from scipy.stats import wishart, multivariate_normal, bernoulli, multinomial
 #from sklearn.model_selection import train_test_split
 import os, pickle
 import numpy as np
 from numpy import log, sum, exp, prod
-from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand
+from numpy.linalg import det
+from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand, multivariate_normal
+from scipy.stats import wishart #, norm, randint, bernoulli, beta, multinomial, gamma, dirichlet, uniform
+from scipy.special import digamma
 from imp import reload
 from copy import deepcopy
 #import seaborn as sns
@@ -27,7 +29,7 @@ reload(gmm)
 
 N = 10**2       # sample size
 K = 3           # number of mixture components
-D = 10           # dimensions / number of features     
+D = 2          # dimensions / number of features     
 
 mvt = gmm.mvt_tmix(seed=12)
 
@@ -44,19 +46,61 @@ mvt.plot(plot_type='2D')
 MCsim = 1000
 beta0 = 0
 alpha0 = 1
-m0 = np.zeros((D,1))
-W = np.empty((D,D, MCsim))
-nu = np.empty((K,1))
-m = np.empty((D,MCsim))
+nu_0 = D-1 + 2                    # constraint D-1
+#m0 = np.zeros((D,1))
+var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
+m0 = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 
-alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
-r = dirichlet(alpha = alphas, size = N)
+W = np.empty((D,D, K, MCsim))       
+W.shape
+
+nu = betas = Ns = log_Lambda = np.empty((K,MCsim))            # posterior dof of W and beta_k's
+m_mean = np.empty((D,MCsim))                            # posterior means of mu
+rho = rho_norm = np.empty((N,K, MCsim))
+w_scales = np.zeros((D,D)) ; np.fill_diagonal(w_scales, 0.5)
+W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)
+W_init.shape
+
+W_init
+
+for k in range(K): W[:,:,k,0] = W_init[k,:,:]
+
+rho_norm[:,:,0] = rho[:,:,0] = np.full((N,K),1/K)         # initialize
+rho_norm[:,:,0]
+
+Ns[:,0] = rho_norm[:,:,0].sum(axis=0)                 # (10.51)
+
+betas[:,0] = beta0 + Ns[:,0] 
+nu[:,0] = nu_0 + Ns[:,0] + 1
+W[:,:,:,0]
+
+for k in range(K):
+    log_Lambda_k=0
+    for i in range(1,D): log_Lambda_k += digamma((nu[k,0]+1-i)/2) + D*log(2) + log(det(W[:,:,k,0]))
+    log_Lambda[k,0] = log_Lambda_k
+log_Lambda[:,0]
+
+rho_norm
+X.shape
+X[0,:]
+
+# Check matrix multipl here next!!!
+k=1
+n = 20
+rho_norm[:,k,0].reshape(1,N)
+np.multiply(rho_norm[:,k,0].reshape(1,N), X) #.sum(axis=0) 
+
+
+for n in range(N):
+    rho_norm[n,:,0] = rho[n,:,0]/Ns[n]
+rho_norm
+
+#alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
+#r = dirichlet(alpha = alphas, size = N)
 #p_0 = np.array([1/K]*K)  
 #theta_0 = beta(a = 1, b = 1, size = K*D).reshape(D,K)
-r.shape
-alphas
 
-N_ks = r.sum(axis=0)                 # (10.51)
+N_ks = rho.sum(axis=0)                 # (10.51)
 N_ks.shape
 
 X.shape
