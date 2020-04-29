@@ -42,43 +42,72 @@ mvt.plot(plot_type='2D')
 # Set starting values for parameters:
 #----------------------------------------
 #seed(12)
-
-MCsim = 1000
+MCsim = 1000         # MC iterations
 beta0 = 0
 alpha0 = 1
 nu_0 = D-1 + 2                    # constraint D-1
-#m0 = np.zeros((D,1))
 var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
 m0 = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 
+# Initializations:
+####################
 W = np.empty((D,D, K, MCsim))       
-W.shape
-
 nu = betas = Ns = log_Lambda = np.empty((K,MCsim))            # posterior dof of W and beta_k's
-m_mean = np.empty((D,MCsim))                            # posterior means of mu
+m_mean = np.empty((D,K,MCsim))                            # posterior means of mu
 rho = rho_norm = np.empty((N,K, MCsim))
 w_scales = np.zeros((D,D)) ; np.fill_diagonal(w_scales, 0.5)
-W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)
-W_init.shape
+W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)        # random initialization
+x_mean = np.zeros((K,D))
 
-W_init
 
-for k in range(K): W[:,:,k,0] = W_init[k,:,:]
+# Set iteration:
+#---------------
+it = 0
 
-rho_norm[:,:,0] = rho[:,:,0] = np.full((N,K),1/K)         # initialize
-rho_norm[:,:,0]
+for k in range(K): W[:,:,k,it] = W_init[k,:,:]
 
-Ns[:,0] = rho_norm[:,:,0].sum(axis=0)                 # (10.51)
+rho_norm[:,:,it] = rho[:,:,it] = np.full((N,K),1/K)         # initialize matrix
+#rho_norm[:,:,it]
 
-betas[:,0] = beta0 + Ns[:,0] 
-nu[:,0] = nu_0 + Ns[:,0] + 1
-W[:,:,:,0]
+Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
+betas[:,it] = beta0 + Ns[:,it] 
+nu[:,it] = nu_0 + Ns[:,it] + 1
+
+n = 1
+k = 2
+
+X.shape
+
+#Nks = np.tile(1/Ns[k,it],(N,D))
+#rn = np.tile(rho_norm[:,k,it],(D,1)).T
+#np.multiply(rn - X, Nks).sum(axis=0)
+
+for k in range(K):
+    Nks = np.tile(1/Ns[k,it],(N,D))
+    rn = np.tile(rho_norm[:,k,it],(D,1)).T
+    x_mean[k,:] = np.multiply(rn - X, Nks).sum(axis=0)
+    m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
+
+x_mean
+
+xm = np.tile(x_mean[k,:],(N,1))
+XX = (X - xm).T.dot(X - xm)                   # X*X' , X needs to be transposed 
+
+
+#for k in range(K):
+#   for n in range(N):
+#     x_mean[k,:] += rho_norm[n,k,it] * X[n,]
+#   x_mean[k,:] = x_mean[k,:]/Ns[k,it]  
+
+Ns[k,it]
+
 
 for k in range(K):
     log_Lambda_k=0
-    for i in range(1,D): log_Lambda_k += digamma((nu[k,0]+1-i)/2) + D*log(2) + log(det(W[:,:,k,0]))
-    log_Lambda[k,0] = log_Lambda_k
-log_Lambda[:,0]
+    for i in range(1,D): log_Lambda_k += digamma((nu[k,it]+1-i)/2) + D*log(2) + log(det(W[:,:,k,it]))
+    log_Lambda[k,it] = log_Lambda_k
+
+log_Lambda[:,it]
 
 rho_norm
 X.shape
@@ -87,13 +116,10 @@ X[0,:]
 # Check matrix multipl here next!!!
 k=1
 n = 20
-rho_norm[:,k,0].reshape(1,N)
-np.multiply(rho_norm[:,k,0].reshape(1,N), X) #.sum(axis=0) 
 
+a = np.array([0, 1, 2])
+np.tile(a, (2, 1)).T 
 
-for n in range(N):
-    rho_norm[n,:,0] = rho[n,:,0]/Ns[n]
-rho_norm
 
 #alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
 #r = dirichlet(alpha = alphas, size = N)
@@ -102,16 +128,6 @@ rho_norm
 
 N_ks = rho.sum(axis=0)                 # (10.51)
 N_ks.shape
-
-X.shape
-
-k=1; n=3
-
-r[n,k]*X[n,:]
-
-np.tile(np.array([1.2, 5]), (4,1))
-r_k = np.tile(r[:,k],(D,1)).T
-r_k.shape
 
 #pd.DataFrame(r).head()
 #pd.DataFrame(r_k).head()
