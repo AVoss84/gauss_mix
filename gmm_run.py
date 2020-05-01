@@ -92,7 +92,7 @@ x_mean
 
 xm = np.tile(x_mean[k,:],(N,1))
 XX = (X - xm).T.dot(X - xm)                   # X*X' , X needs to be transposed 
-
+XX
 
 #for k in range(K):
 #   for n in range(N):
