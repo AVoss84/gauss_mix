@@ -13,7 +13,6 @@ from imp import reload
 from copy import deepcopy
 #import seaborn as sns
 import pandas as pd
-from sklearn.mixture import BayesianGaussianMixture
 
 os.chdir("C:\\Users\\Alexander\\Documents\\GitHub\\gauss_mix")
 #os.chdir("C:\\Users\\Alexander\\Documents\\Python_stuff\\gauss_mix")   # sony
@@ -28,7 +27,7 @@ reload(gmm)
 
 #seed(12)
 
-N = 10**2       # sample size
+N = 10**3       # sample size
 K = 3           # number of mixture components
 D = 2          # dimensions / number of features     
 
@@ -40,103 +39,75 @@ X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)
 
 #mvt.plot(plot_type='2D')
 
-# DD
-fin_gmm = BayesianGaussianMixture(
-        weight_concentration_prior_type="dirichlet_distribution",
-        covariance_type='full', weight_concentration_prior=1e-2,
-        n_components=K, reg_covar=0, init_params='random',
-        max_iter=1500, mean_precision_prior=.8)
-
-fitted = fin_gmm.fit(X)
-
-z_max = fitted.predict(X)
-z_max
-
-post_z_X = fitted.predict_proba(X)
-post_z_X
-
-# DP
-inf_gmm = BayesianGaussianMixture(
-        weight_concentration_prior_type="dirichlet_process",
-        covariance_type='full', weight_concentration_prior=2,
-        n_components=10, reg_covar=0, init_params='random',
-        max_iter=1500, mean_precision_prior=.8)
-
-fitted = inf_gmm.fit(X)
-z_max = fitted.predict(X)
-z_max
-post_z_X = fitted.predict_proba(X)
-post_z_X.shape
-
 
 # Set starting values for parameters:
 #----------------------------------------
 #seed(12)
 MCsim = 1000         # MC iterations
 
+# Initializations:
+####################
 beta0 = 0
 alpha0 = 1
 nu_0 = D-1 + 2                    # constraint D-1
 var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
 m0 = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 
-# Initializations:
-####################
 W = np.empty((D,D, K, MCsim))       
 nu = betas = Ns = log_Lambda = np.empty((K,MCsim))            # posterior dof of W and beta_k's
 m_mean = np.empty((D,K,MCsim))                            # posterior means of mu
 rho = rho_norm = np.empty((N,K, MCsim))
 S = np.empty((D,D, K, MCsim))
-W0_inv = np.eye(D)*.5
+W0_inv = np.eye(D)*1
+x_mean = np.zeros((K,D))
+alpha = np.zeros((K,MCsim))
+log_pi = alpha = np.zeros((K,MCsim))
 w_scales = np.zeros((D,D)) ; np.fill_diagonal(w_scales, 0.5)
 W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)        # random initialization
-x_mean = np.zeros((K,D))
 
 # Set iteration:
 #---------------
 it = 0
 
-for k in range(K): W[:,:,k,it] = W_init[k,:,:]
+#for k in range(K): W[:,:,k,it] = W_init[k,:,:]
 
 rho_norm[:,:,it] = rho[:,:,it] = np.full((N,K),1/K)         # initialize matrix
 
+
+# M-step:
+#---------
 Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
 betas[:,it] = beta0 + Ns[:,it] 
 nu[:,it] = nu_0 + Ns[:,it] + 1
 
-Nks = np.tile(1/Ns[k,it],(N,D))
-rn = np.tile(rho_norm[:,k,it],(D,1)).T
-rn
-np.multiply(rn - X, Nks).sum(axis=0)
-
-W0_inv
-
+#Nks = np.tile(1/Ns[k,it],(N,D))
+#rn = np.tile(rho_norm[:,k,it],(D,1)).T
+#np.multiply(rn*X, Nks).sum(axis=0)
 
 for k in range(K):
-    print(k)
+
+    alpha[k,it] = alpha0 + Ns[k,it]
+
     Nks = np.tile(1/Ns[k,it],(N,D))
     rn = np.tile(rho_norm[:,k,it],(D,1)).T
-    x_mean[k,:] = np.multiply(rn - X, Nks).sum(axis=0)
+    x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
     
     m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
+
     Sk = 0
     for n in range(N): Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(2,1).dot((X[n,:] - x_mean[k,:]).reshape(1,2))/Ns[k,it]
-    #print(Sk)  
+    S[:,:,k,it] = Sk
+
+    Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*(x_mean[k,:] - m0).reshape(D,1).dot(x_mean[k,:] - m0)/(beta0 + Ns[k,it])
+    W[:,:,k,it] = np.linalg.inv(Wk_inv) 
 
     log_Lambda_k = 0
     for i in range(1,D): log_Lambda_k += digamma((nu[k,it]+1-i)/2) + D*log(2) + log(det(W[:,:,k,it]))
     log_Lambda[k,it] = log_Lambda_k
 
+alpha_hat = alpha[:,it].sum()
 
-#xm = np.tile(x_mean[k,:],(N,1))
-#XX = (X - xm).T.dot(X - xm)                   # X*X' , X needs to be transposed 
-
-# Check matrix multipl here next!!!
-k=1
-n = 20
-
-a = np.array([0, 1, 2])
-np.tile(a, (2, 1)).T 
+for k in range(K): log_pi[k,it] = digamma(alpha[k,it]) - digamma(alpha_hat) 
 
 
 #alphas = gamma(shape=2, size=K)               # Dirichlet hyperparameters -> concentration param.
@@ -152,15 +123,7 @@ N_ks.shape
 
 #r_k.shape
 #X.sum(axis=0).shape
-x_mean_k = np.multiply(r_k, X.sum(axis=0)).sum(axis=0)/N_ks[k]     # (10.52)
-x_mean_k.shape
 
-x_centered = (X[n,:] - x_mean_k).reshape(-1,1)
-
-x_centered.shape
-x_centered.T.shape
-
-np.matmul(x_centered, x_centered.T).shape
 
 #----------
 # Run EM:    

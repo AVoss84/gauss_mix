@@ -69,3 +69,43 @@ bpplt.gaussian_mixture_2d(Y, alpha=alpha, scale=2)
 
 Q.compute_lowerbound()
 Y.random()
+
+from sklearn.mixture import BayesianGaussianMixture
+
+# DD
+fin_gmm = BayesianGaussianMixture(
+        weight_concentration_prior_type="dirichlet_distribution",
+        covariance_type='full', 
+        weight_concentration_prior=1.2,
+        n_components=10, reg_covar=0, init_params='random',
+        max_iter=1500, mean_precision_prior=.8)
+
+fitted = fin_gmm.fit(X)
+
+z_max = fitted.predict(X)
+z_max
+
+post_z_X = fitted.predict_proba(X)
+post_z_X
+
+def prob_outlier(p):
+    return 1-prod(1-p)
+
+# Calculate prob. of belonging to any of the K clusters
+# # if below p < 0.05 for example label as outlier:     
+np.apply_along_axis(prob_outlier, 1, post_z_X)
+
+# DP
+inf_gmm = BayesianGaussianMixture(
+        weight_concentration_prior_type="dirichlet_process",
+        weight_concentration_prior=2,
+        n_components=10, reg_covar=0, init_params='random',
+        max_iter=1500, mean_precision_prior=.8)
+
+fitted = inf_gmm.fit(X)
+
+z_max = fitted.predict(X)
+z_max
+
+post_z_X = fitted.predict_proba(X)
+post_z_X.shape
