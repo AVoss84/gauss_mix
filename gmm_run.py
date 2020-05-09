@@ -6,7 +6,7 @@ import os, pickle
 import numpy as np
 from numpy import log, sum, exp, prod
 from numpy.linalg import det
-from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand, multivariate_normal
+from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand, normal, multivariate_normal
 from scipy.stats import wishart #, norm, randint, bernoulli, beta, multinomial, gamma, dirichlet, uniform
 from scipy.special import digamma
 from imp import reload
@@ -56,7 +56,7 @@ var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
 m0 = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 W = np.empty((D,D, K, MCsim))       
 nu = np.empty((K,MCsim))            # posterior dof of W and beta_k's
-betas = np.empty((K,MCsim))            # posterior dof of W and beta_k's
+betas = gamma(shape=4,size=K*MCsim).reshape((K,MCsim))       #np.empty((K,MCsim))            
 Ns = np.empty((K,MCsim))            # posterior dof of W and beta_k's
 log_Lambda = np.empty((K,MCsim))            # posterior dof of W and beta_k's
 alpha = np.empty((K,MCsim))            # posterior dof of W and beta_k's
@@ -80,7 +80,6 @@ it = 0
 rho_norm[:,:,it] = np.full((N,K),1/K)         # initialize matrix
 rho[:,:,it] = np.full((N,K),1/K)         # initialize matrix
 
-
 #Nks = np.tile(1/Ns[k,it],(N,D))
 #rn = np.tile(rho_norm[:,k,it],(D,1)).T
 #np.multiply(rn*X, Nks).sum(axis=0)
@@ -95,6 +94,11 @@ it = next(its) ; print(it)
 
 #for it in range(MCsim): 
 
+Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
+betas[:,it] = beta0 + Ns[:,it] 
+nu[:,it] = nu_0 + Ns[:,it] + 1
+
+###########
 # E-step:
 ###########
 for n in range(N): 
@@ -104,10 +108,7 @@ for n in range(N):
 rho[n,:,it] = exp(log_rho[n,:,it])
 rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
 
-Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
-betas[:,it] = beta0 + Ns[:,it] 
-nu[:,it] = nu_0 + Ns[:,it] + 1
-
+###########
 # M-step:
 ###########
 for k in range(K):
