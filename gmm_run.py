@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 #from sklearn.model_selection import train_test_split
-import os, pickle
+import os, pickle, time
 import numpy as np
 from numpy import log, sum, exp, prod
 from numpy.linalg import det
@@ -18,6 +18,26 @@ os.chdir("C:\\Users\\Alexander\\Documents\\GitHub\\gauss_mix")
 #os.chdir("C:\\Users\\Alexander\\Documents\\Python_stuff\\gauss_mix")   # sony
 
 from gaussmix.utils import gmm_utils as gmm
+
+import numba
+from numba import jit
+
+@jit(nopython=True)
+def go_fast(a): # Function is compiled to machine code when called the first time
+    trace = 0.0
+    # assuming square input matrix
+    for i in range(a.shape[0]):   # Numba likes loops
+        trace += np.tanh(a[i, i]) # Numba likes NumPy functions
+    return a + trace              # Numba likes NumPy broadcasting
+
+x = np.arange(100).reshape(10, 10)
+go_fast(x)
+
+start_time = time.time()
+#go_fast.py_func(x**2)
+go_fast(x**2)
+print("--- %s seconds ---" % (time.time() - start_time))
+
 
 os.getcwd()
 
