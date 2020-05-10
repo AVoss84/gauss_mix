@@ -47,7 +47,7 @@ MCsim = 10         # MC iterations
 ####################
 # Declare:
 ####################
-beta0 = 0
+beta0 = 2.
 alpha0 = 1.2
 nu_0 = D-1 + 2                    # constraint D-1
 W = np.empty((D,D, K, MCsim))       
@@ -88,62 +88,81 @@ nu[:,it] = nu_0 + Ns[:,it] + 1
 log_Lambda[:,it] = gamma(shape=4,size=K)
 alpha[:,it] = uniform(size=K)
 log_pi[:,it] = log(uniform(size=K))
-
+m_mean[:,:,it] = normal(size=D*K).reshape(D,K)
 
 #Nks = np.tile(1/Ns[k,it],(N,D))
 #rn = np.tile(rho_norm[:,k,it],(D,1)).T
 #np.multiply(rn*X, Nks).sum(axis=0)
 
-#ns = iter(range(N))
-#ks = iter(range(K))
-#its = iter(range(MCsim))
+ns = iter(range(N))
+ks = iter(range(K))
+its = iter(range(MCsim))
 
-#n = next(ns); print(n)
-#k = next(ks) ; print(k)
+log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+
+log_pi[k,it]
+.5*log_Lambda[k,it] 
+
+-D/(2*betas[k,it]) 
+-.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+
+X[n,:]
+(X[n,:] - m_mean[:,k,it]).reshape(1,D)#.dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+
+
+k = next(ks) ; print(k)
+
+n = next(ns); print(n)
+
 it = next(its) ; print(it)
 
-for it in range(MCsim): 
+#for it in range(MCsim): 
 
-    print(it)
+print(it)
 
-    ###########
-    # E-step:
-    ###########
-    for n in range(N): 
-        for k in range(K):
-            log_rho[n,k,it] = log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-            #print(log_rho[n,k,it])
-        rho[n,:,it] = exp(log_rho[n,:,it])
-        rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
-
-    Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
-    betas[:,it] = beta0 + Ns[:,it] 
-    nu[:,it] = nu_0 + Ns[:,it] + 1
-
-    ###########
-    # M-step:
-    ###########
+###########
+# E-step:
+###########
+for n in range(N): 
     for k in range(K):
+        log_rho[n,k,it] = log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+        print(log_rho[n,k,it])
 
-        alpha[k,it] = alpha0 + Ns[k,it]
-        Nks = np.tile(1/Ns[k,it],(N,D))
+    rho[n,:,it] = exp(log_rho[n,:,it])
+    rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
 
-        rn = np.tile(rho_norm[:,k,it],(D,1)).T
-        x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
+Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
+betas[:,it] = beta0 + Ns[:,it] 
+nu[:,it] = nu_0 + Ns[:,it] + 1
 
-        m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
+###########
+# M-step:
+###########
+#for k in range(K):
 
-        Sk = 0
-        for n in range(N):        
-            Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
-        S[:,:,k,it] = Sk
+alpha[k,it] = alpha0 + Ns[k,it]
+Nks = np.tile(1/Ns[k,it],(N,D))
 
-        Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*(x_mean[k,:] - m0).reshape(D,1).dot(x_mean[k,:] - m0)/(beta0 + Ns[k,it])
-        W[:,:,k,it] = np.linalg.inv(Wk_inv) 
+rn = np.tile(rho_norm[:,k,it],(D,1)).T
+x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
+x_mean[k,:]
 
-        log_Lambda_k = []
-        for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
-        log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(det(W[:,:,k,it]))
+m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
+
+Ns[k,it] * x_mean[k,:]
+
+Sk = 0
+for n in range(N):        
+    Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
+S[:,:,k,it] = Sk
+
+Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*(x_mean[k,:] - m0).reshape(D,1).dot(x_mean[k,:] - m0)/(beta0 + Ns[k,it])
+W[:,:,k,it] = np.linalg.inv(Wk_inv) 
+
+log_Lambda_k = []
+for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
+log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(det(W[:,:,k,it]))
 
 
 
