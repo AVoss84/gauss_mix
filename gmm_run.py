@@ -31,7 +31,7 @@ N = 10**3       # sample size
 K = 4           # number of mixture components
 D = 2          # dimensions / number of features     
 
-mvt = gmm.mvt_tmix(seed=12)
+mvt = gmm.mvt_tmix()
 
 # X and true cluster assignements:
 #-----------------------------------
@@ -39,26 +39,23 @@ X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)
 
 #mvt.plot(plot_type='2D')
 
-
 # Set starting values for parameters:
 #----------------------------------------
 #seed(12)
-MCsim = 1000         # MC iterations
+MCsim = 10         # MC iterations
 
 ####################
-# Initializations:
+# Declare:
 ####################
-
 beta0 = 0
 alpha0 = 1.2
 nu_0 = D-1 + 2                    # constraint D-1
-var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
-m0 = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 W = np.empty((D,D, K, MCsim))       
+m0 = np.empty((D,MCsim))
 nu = np.empty((K,MCsim))            # posterior dof of W and beta_k's
-betas = gamma(shape=4,size=K*MCsim).reshape((K,MCsim))       #np.empty((K,MCsim))            
+betas = np.empty((K,MCsim))            
 Ns = np.empty((K,MCsim))            # posterior dof of W and beta_k's
-log_Lambda = np.empty((K,MCsim))            # posterior dof of W and beta_k's
+log_Lambda = np.empty((K,MCsim))            
 alpha = np.empty((K,MCsim))            # posterior dof of W and beta_k's
 log_pi = np.empty((K,MCsim))            # posterior dof of W and beta_k's
 m_mean = np.empty((D,K,MCsim))                            # posterior means of mu
@@ -68,75 +65,87 @@ rho_norm = np.empty((N,K, MCsim))
 S = np.empty((D,D, K, MCsim))
 W0_inv = np.eye(D)*1
 x_mean = np.zeros((K,D))
-w_scales = np.zeros((D,D)) ; np.fill_diagonal(w_scales, 0.5)
-W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)        # random initialization
 
-# Set iteration:
-#---------------
+#------------------
+# Initializations
+#------------------
 it = 0
 
-#for k in range(K): W[:,:,k,it] = W_init[k,:,:]
+var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
+m0[:,it] = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 
+w_scales = np.zeros((D,D)) ; np.fill_diagonal(w_scales, 0.5)
+W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)        # random initialization
+for k in range(K): 
+    W[:,:,k,it] = W_init[k,:,:]
 rho_norm[:,:,it] = np.full((N,K),1/K)         # initialize matrix
-rho[:,:,it] = np.full((N,K),1/K)         # initialize matrix
+rho[:,:,it] = np.full((N,K),1/K)         
+#betas[:,it] = gamma(shape=4,size=K)
+#nu[:,it] = [nu_0]*K
+Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
+betas[:,it] = beta0 + Ns[:,it] 
+nu[:,it] = nu_0 + Ns[:,it] + 1
+log_Lambda[:,it] = gamma(shape=4,size=K)
+alpha[:,it] = uniform(size=K)
+log_pi[:,it] = log(uniform(size=K))
+
 
 #Nks = np.tile(1/Ns[k,it],(N,D))
 #rn = np.tile(rho_norm[:,k,it],(D,1)).T
 #np.multiply(rn*X, Nks).sum(axis=0)
 
-ns = iter(range(N))
-ks = iter(range(K))
-its = iter(range(MCsim))
+#ns = iter(range(N))
+#ks = iter(range(K))
+#its = iter(range(MCsim))
 
-n = next(ns); print(n)
-k = next(ks) ; print(k)
+#n = next(ns); print(n)
+#k = next(ks) ; print(k)
 it = next(its) ; print(it)
 
-#for it in range(MCsim): 
+for it in range(MCsim): 
 
-Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
-betas[:,it] = beta0 + Ns[:,it] 
-nu[:,it] = nu_0 + Ns[:,it] + 1
+    print(it)
 
-###########
-# E-step:
-###########
-for n in range(N): 
-  for k in range(K):
-    log_rho[n,k,it] = log_pi[k,it] + 0.5*log_Lambda[k,it] -D/(2*betas[k,it]) -0.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+    ###########
+    # E-step:
+    ###########
+    for n in range(N): 
+        for k in range(K):
+            log_rho[n,k,it] = log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+            #print(log_rho[n,k,it])
+        rho[n,:,it] = exp(log_rho[n,:,it])
+        rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
 
-rho[n,:,it] = exp(log_rho[n,:,it])
-rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
+    Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
+    betas[:,it] = beta0 + Ns[:,it] 
+    nu[:,it] = nu_0 + Ns[:,it] + 1
 
-###########
-# M-step:
-###########
-for k in range(K):
+    ###########
+    # M-step:
+    ###########
+    for k in range(K):
 
-    alpha[k,it] = alpha0 + Ns[k,it]
-    Nks = np.tile(1/Ns[k,it],(N,D))
+        alpha[k,it] = alpha0 + Ns[k,it]
+        Nks = np.tile(1/Ns[k,it],(N,D))
 
-    rn = np.tile(rho_norm[:,k,it],(D,1)).T
-    x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
+        rn = np.tile(rho_norm[:,k,it],(D,1)).T
+        x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
 
-    m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
+        m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
 
-    Sk = 0
-    for n in range(N):        
-        Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
-    S[:,:,k,it] = Sk
+        Sk = 0
+        for n in range(N):        
+            Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
+        S[:,:,k,it] = Sk
 
-    Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*(x_mean[k,:] - m0).reshape(D,1).dot(x_mean[k,:] - m0)/(beta0 + Ns[k,it])
-    W[:,:,k,it] = np.linalg.inv(Wk_inv) 
+        Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*(x_mean[k,:] - m0).reshape(D,1).dot(x_mean[k,:] - m0)/(beta0 + Ns[k,it])
+        W[:,:,k,it] = np.linalg.inv(Wk_inv) 
 
-    log_Lambda_k = []
-    for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
-    log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(det(W[:,:,k,it]))
+        log_Lambda_k = []
+        for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
+        log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(det(W[:,:,k,it]))
 
 
-n = next(ns); print(n)
-k = next(ks) ; print(k)
-it = next(its) ; print(it)
 
 
 #----------------------------------------------------------------------------------------------------
