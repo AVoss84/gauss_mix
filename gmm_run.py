@@ -90,7 +90,6 @@ x_mean = np.zeros((K,D))
 # Initializations
 #------------------
 it = 0
-
 var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
 m0[:,it] = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 
@@ -98,8 +97,13 @@ w_scales = np.zeros((D,D)) ; np.fill_diagonal(w_scales, 0.5)
 W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)        # random initialization
 for k in range(K): 
     W[:,:,k,it] = W_init[k,:,:]
-rho_norm[:,:,it] = np.full((N,K),1/K)         # initialize matrix
-rho[:,:,it] = np.full((N,K),1/K)         
+#rho_norm[:,:,it] = np.full((N,K),1/K)         # initialize matrix
+#rho[:,:,it] = np.full((N,K),1/K)         
+
+alp = gamma(shape=4,size=K)
+rho_norm[:,:,it] = dirichlet(alpha=alp, size=N)
+rho[:,:,it] = rho_norm[:,:,it]
+
 #betas[:,it] = gamma(shape=4,size=K)
 #nu[:,it] = [nu_0]*K
 Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
@@ -132,10 +136,9 @@ X[n,:]
 
 
 k = next(ks) ; print(k)
-
 n = next(ns); print(n)
-
 it = next(its) ; print(it)
+
 
 #for it in range(MCsim): 
 
@@ -147,7 +150,7 @@ print(it)
 for n in range(N): 
     for k in range(K):
         log_rho[n,k,it] = log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-        print(log_rho[n,k,it])
+        #print(log_rho[n,k,it])
 
     rho[n,:,it] = exp(log_rho[n,:,it])
     rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
@@ -184,6 +187,7 @@ log_Lambda_k = []
 for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
 log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(det(W[:,:,k,it]))
 
+it = next(its) ; print(it)
 
 
 
