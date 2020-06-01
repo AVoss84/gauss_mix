@@ -80,7 +80,6 @@ for k in range(K):
     W[:,:,k,it] = W_init[k,:,:]
 #rho_norm[:,:,it] = np.full((N,K),1/K)         # initialize matrix
 #rho[:,:,it] = np.full((N,K),1/K)         
-
 alp = gamma(shape=4,size=K)
 rho_norm[:,:,it] = dirichlet(alpha=alp, size=N)     # normalized responsibilities
 rho[:,:,it] = rho_norm[:,:,it]
