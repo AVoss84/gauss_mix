@@ -19,26 +19,6 @@ os.chdir("C:\\Users\\Alexander\\Documents\\GitHub\\gauss_mix")
 
 from gaussmix.utils import gmm_utils as gmm
 
-import numba
-from numba import jit
-
-@jit(nopython=True)
-def go_fast(a): # Function is compiled to machine code when called the first time
-    trace = 0.0
-    # assuming square input matrix
-    for i in range(a.shape[0]):   # Numba likes loops
-        trace += np.tanh(a[i, i]) # Numba likes NumPy functions
-    return a + trace              # Numba likes NumPy broadcasting
-
-x = np.arange(100).reshape(10, 10)
-go_fast(x)
-
-start_time = time.time()
-#go_fast.py_func(x**2)
-go_fast(x**2)
-print("--- %s seconds ---" % (time.time() - start_time))
-
-
 os.getcwd()
 
 #os.listdir(path='.')    # list files in current directory
@@ -93,6 +73,7 @@ it = 0
 var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
 m0[:,it] = multivariate_normal(np.zeros((D)), var_m0, size=1)    # prior mean of mu
 
+# Initilaze W cov. matrix
 w_scales = np.zeros((D,D)) ; np.fill_diagonal(w_scales, 0.5)
 W_init = wishart.rvs(df = D-1+10, scale = w_scales, size=K)        # random initialization
 for k in range(K): 
@@ -101,14 +82,14 @@ for k in range(K):
 #rho[:,:,it] = np.full((N,K),1/K)         
 
 alp = gamma(shape=4,size=K)
-rho_norm[:,:,it] = dirichlet(alpha=alp, size=N)
+rho_norm[:,:,it] = dirichlet(alpha=alp, size=N)     # normalized responsibilities
 rho[:,:,it] = rho_norm[:,:,it]
 
 #betas[:,it] = gamma(shape=4,size=K)
 #nu[:,it] = [nu_0]*K
 Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
 betas[:,it] = beta0 + Ns[:,it] 
-nu[:,it] = nu_0 + Ns[:,it] + 1
+nu[:,it] = nu_0 + Ns[:,it] + 1                    # degrees of freedom
 log_Lambda[:,it] = gamma(shape=4,size=K)
 alpha[:,it] = uniform(size=K)
 log_pi[:,it] = log(uniform(size=K))
@@ -139,8 +120,7 @@ k = next(ks) ; print(k)
 n = next(ns); print(n)
 it = next(its) ; print(it)
 
-
-#for it in range(MCsim): 
+for it in range(MCsim): 
 
 print(it)
 
@@ -150,10 +130,11 @@ print(it)
 for n in range(N): 
     for k in range(K):
         log_rho[n,k,it] = log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-        #print(log_rho[n,k,it])
+        #print('n: {} k: {} value: {}'.format(n,k, log_rho[n,k,it]))
 
-    rho[n,:,it] = exp(log_rho[n,:,it])
-    rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
+    #rho[n,:,it] = exp(log_rho[n,:,it])
+    #rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
+    rho_norm[n,:,it] = gmm.exp_normalize(log_rho[n,:,it])
 
 Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
 betas[:,it] = beta0 + Ns[:,it] 
@@ -162,32 +143,29 @@ nu[:,it] = nu_0 + Ns[:,it] + 1
 ###########
 # M-step:
 ###########
-#for k in range(K):
+for k in range(K):
+    alpha[k,it] = alpha0 + Ns[k,it]
+    if Ns[k,it] == 0.: Ns[k,it] = 10**(-4)
+    Nks = np.nan_to_num(np.tile(1/Ns[k,it],(N,D)))
+    rn = np.tile(rho_norm[:,k,it],(D,1)).T
+    x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
+    m_mean[:,k,it] = (beta0 * m0[:,it] + Ns[k,it] * x_mean[k,:])/betas[k,it]
 
-alpha[k,it] = alpha0 + Ns[k,it]
-Nks = np.tile(1/Ns[k,it],(N,D))
+    #k = next(ks) ; print(k)
 
-rn = np.tile(rho_norm[:,k,it],(D,1)).T
-x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
-x_mean[k,:]
+    Sk = 0 ;
+    for n in range(N):        
+       Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
+    S[:,:,k,it] = Sk
 
-m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
+    Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*((x_mean[k,:] - m0[:,it]).reshape(D,1).dot((x_mean[k,:] - m0[:,it]).reshape(1,D)))/(beta0 + Ns[k,it])
+    W[:,:,k,it] = np.linalg.inv(Wk_inv) 
 
-Ns[k,it] * x_mean[k,:]
+    log_Lambda_k = []
+    for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
+    log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(det(W[:,:,k,it]))
 
-Sk = 0
-for n in range(N):        
-    Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
-S[:,:,k,it] = Sk
-
-Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*(x_mean[k,:] - m0).reshape(D,1).dot(x_mean[k,:] - m0)/(beta0 + Ns[k,it])
-W[:,:,k,it] = np.linalg.inv(Wk_inv) 
-
-log_Lambda_k = []
-for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
-log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(det(W[:,:,k,it]))
-
-it = next(its) ; print(it)
+#it = next(its) ; print(it)
 
 
 

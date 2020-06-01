@@ -6,6 +6,13 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 from scipy.stats import wishart, multivariate_normal, norm, randint, bernoulli, beta, multinomial, gamma, dirichlet, uniform
 
+
+def exp_normalize(x):
+    b = x.max()
+    y = np.exp(x - b)
+    return y / y.sum()
+
+
 class mvt2mixture:
     
     def __init__(self, thetas = {'mean1' : None, 'mean2' : None, \
