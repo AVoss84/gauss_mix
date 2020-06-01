@@ -103,18 +103,6 @@ ns = iter(range(N))
 ks = iter(range(K))
 its = iter(range(MCsim))
 
-log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-
-log_pi[k,it]
-.5*log_Lambda[k,it] 
-
--D/(2*betas[k,it]) 
--.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-
-X[n,:]
-(X[n,:] - m_mean[:,k,it]).reshape(1,D)#.dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-
 
 k = next(ks) ; print(k)
 n = next(ns); print(n)
