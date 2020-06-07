@@ -41,7 +41,7 @@ X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)
 # Set starting values for parameters:
 #----------------------------------------
 #seed(12)
-MCsim = 10         # MC iterations
+MCsim = 100         # MC iterations
 
 ####################
 # Declare:
@@ -100,9 +100,9 @@ m_mean[:,:,it] = normal(size=D*K).reshape(D,K)
 #rn = np.tile(rho_norm[:,k,it],(D,1)).T
 #np.multiply(rn*X, Nks).sum(axis=0)
 
-ns = iter(range(N))
-ks = iter(range(K))
-its = iter(range(MCsim))
+#ns = iter(range(N))
+#ks = iter(range(K))
+i#ts = iter(range(MCsim))
 #k = next(ks) ; print(k)
 #n = next(ns); print(n)
 #it = next(its) ; print(it)
@@ -155,7 +155,7 @@ for it in range(MCsim):
         log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(deter)
 
 
-it = next(its) ; print(it)
+#it = next(its) ; print(it)
 
 
 
