@@ -192,6 +192,7 @@ for k in range(K):
 ell = .5*exp_LL[:,it].sum(axis=0)      # 10.71
 print(ell)
 
+next(it)
 
 rho_norm[n,k,it]
 Ns.shape 
