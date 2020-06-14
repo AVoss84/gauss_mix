@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 #from sklearn.model_selection import train_test_split
 import os, pickle, time
 import numpy as np
+from math import pi
 from numpy import log, sum, exp, prod
 from numpy.linalg import det
 from numpy.random import beta, binomial, dirichlet, uniform, gamma, seed, multinomial, gumbel, rand, normal, multivariate_normal
@@ -41,12 +42,11 @@ X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)
 # Set starting values for parameters:
 #----------------------------------------
 #seed(12)
-MCsim = 100         # MC iterations
+MCsim = 20         # MC iterations
 
 ####################
 # Declare:
 ####################
-
 beta0 = 2.
 alpha0 = 1.2
 nu_0 = D-1 + 2                    # constraint D-1
@@ -65,6 +65,8 @@ rho_norm = np.empty((N,K, MCsim))
 S = np.empty((D,D, K, MCsim))
 W0_inv = np.eye(D)*1
 x_mean = np.zeros((K,D))
+# ELBO
+exp_LL = np.zeros((K,MCsim))
 
 #------------------
 # Initializations
@@ -93,6 +95,7 @@ betas[:,it] = beta0 + Ns[:,it]
 nu[:,it] = nu_0 + Ns[:,it] + 1                    # degrees of freedom
 log_Lambda[:,it] = gamma(shape=4,size=K)
 alpha[:,it] = uniform(size=K)
+alpha_hat = alpha[:,it].sum()
 log_pi[:,it] = log(uniform(size=K))
 m_mean[:,:,it] = normal(size=D*K).reshape(D,K)
 
@@ -102,64 +105,105 @@ m_mean[:,:,it] = normal(size=D*K).reshape(D,K)
 
 #ns = iter(range(N))
 #ks = iter(range(K))
-i#ts = iter(range(MCsim))
+its = iter(range(MCsim))
 #k = next(ks) ; print(k)
 #n = next(ns); print(n)
-#it = next(its) ; print(it)
+it = next(its) ; print(it)
 
 
-for it in range(MCsim): 
+#for it in range(MCsim): 
 
-    print('Iter. {}'.format(it))
-    ###########
-    # E-step:
-    ###########
-    for n in range(N): 
-        for k in range(K):
-            log_rho[n,k,it] = log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
-            #print('n: {} k: {} value: {}'.format(n,k, log_rho[n,k,it]))
-
-        #rho[n,:,it] = exp(log_rho[n,:,it])
-        #rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
-        rho_norm[n,:,it] = gmm.exp_normalize(log_rho[n,:,it])
-
-    Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
-    betas[:,it] = beta0 + Ns[:,it] 
-    nu[:,it] = nu_0 + Ns[:,it] + 1
-
-    ###########
-    # M-step:
-    ###########
+print('Iter. {}'.format(it))
+###########
+# E-step:
+###########
+for n in range(N): 
     for k in range(K):
-        alpha[k,it] = alpha0 + Ns[k,it]
-        if Ns[k,it] == 0.: Ns[k,it] = 10**(-4)
-        Nks = np.nan_to_num(np.tile(1/Ns[k,it],(N,D)))
-        rn = np.tile(rho_norm[:,k,it],(D,1)).T
-        x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)
-        m_mean[:,k,it] = (beta0 * m0[:,it] + Ns[k,it] * x_mean[k,:])/betas[k,it]
+        log_rho[n,k,it] = log_pi[k,it] + .5*log_Lambda[k,it] -D/(2*betas[k,it]) -.5*nu[k,it]*(X[n,:] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[n,:] - m_mean[:,k,it]).reshape(D,1))
+        #print('n: {} k: {} value: {}'.format(n,k, log_rho[n,k,it]))
 
-        Sk = 0 ;
-        for n in range(N): Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
-        S[:,:,k,it] = Sk
+    #rho[n,:,it] = exp(log_rho[n,:,it])
+    #rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
+    rho_norm[n,:,it] = gmm.exp_normalize(log_rho[n,:,it])     # 10.67
+    print('n: {} value: {}'.format(n, rho_norm[n,:,it]))
 
-        Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*((x_mean[k,:] - m0[:,it]).reshape(D,1).dot((x_mean[k,:] - m0[:,it]).reshape(1,D)))/(beta0 + Ns[k,it])
-        W[:,:,k,it] = np.linalg.inv(Wk_inv) 
+Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
+print(Ns[:,it])
 
-        log_Lambda_k = []
-        for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1-i)/2))
-        try:
-            deter = det(W[:,:,k,it])
-        except Exception as ex:
-            print(ex)
-            deter = 10**(-5)  
-        log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(deter)
+betas[:,it] = beta0 + Ns[:,it]            # beta_k's, 10.60
+print(betas[:,it])
 
+nu[:,it] = nu_0 + Ns[:,it] + 1                         # 10.63
+print(nu[:,it])
+
+###########
+# M-step:
+###########
+for k in range(K):
+    alpha[k,it] = alpha0 + Ns[k,it]                               # 10.58
+    if Ns[k,it] == 0.: Ns[k,it] = 10**(-4)
+    Nks = np.nan_to_num(np.tile(1/Ns[k,it],(N,D)))       # 10.51
+    rn = np.tile(rho_norm[:,k,it],(D,1)).T
+    x_mean[k,:] = np.multiply(rn*X, Nks).sum(axis=0)        # 10.52
+    m_mean[:,k,it] = (beta0 * m0[:,it] + Ns[k,it] * x_mean[k,:])/betas[k,it]             # 10.61
+
+print(m_mean[:,:,it])
+
+for k in range(K):
+    Sk = 0 ;
+    for n in range(N): Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
+    S[:,:,k,it] = Sk          # 10.53
+
+    Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*((x_mean[k,:] - m0[:,it]).reshape(D,1).dot((x_mean[k,:] - m0[:,it]).reshape(1,D)))/(beta0 + Ns[k,it])  
+    W[:,:,k,it] = np.linalg.inv(Wk_inv)    # 10.62
+
+
+for k in range(K):
+
+    log_Lambda_k = []
+    for i in range(1,D+1): log_Lambda_k.append(digamma((nu[k,it]+1 - i)/2))      
+    try:
+        deter = det(W[:,:,k,it])
+        if deter <  10**(-4): 
+            deter = 10**(-4)
+    except Exception as ex:
+        print(ex)
+        deter = 10**(-4)    
+    log_Lambda[k,it] = sum(log_Lambda_k) + D*log(2) + log(deter)   # 10-65
+
+print(log_Lambda[:,it])
+
+alpha_hat = alpha[:,it].sum()
+for k in range(K):  
+    log_pi[k,it] = digamma(alpha[k,it]) - digamma(alpha_hat)
+print(log_pi[:,it])
+
+
+for k in range(K):
+    #------------------------   
+    # Evidence lower bound:
+    #------------------------
+    # 10.71
+    exp_LL[k,it] = Ns[k,it]*( log_Lambda[k,it] - (D/betas[k,it]) - nu[k,it]*np.trace(S[:,:,k,it].dot(W[:,:,k,it])) - nu[k,it]*(x_mean[k,:] - m_mean[:,k,it]).T.dot(x_mean[k,:] - m_mean[:,k,it]) - D*log(2*pi) )
+    
+    #for n in range(N):
+    #    rho_norm[n,k,it]
+
+ell = .5*exp_LL[:,it].sum(axis=0)      # 10.71
+print(ell)
+
+
+rho_norm[n,k,it]
+Ns.shape 
+Nks.shape
+K
+D
+N
+MCsim
 
 #it = next(its) ; print(it)
 
-
-
-#----------------------------------------------------------------------------------------------------
+#-----------------------------END-----------------------------------------------------------------------
 for k in range(K):
 
     print(k)
@@ -172,7 +216,7 @@ for k in range(K):
 
     m_mean[:,k,it] = (beta0 * m0 + Ns[k,it] * x_mean[k,:])/betas[k,it]
 
-    Sk = 0
+    Sk = 0 ;
     for n in range(N): 
 
         #log_rho[n,k,it] = log_pi[k,it] + 0.5*log_Lambda[k,it] -D/(2*betas[k,it]) -0.5*nu[k,it]*(X[5,1] - m_mean[:,k,it]).reshape(1,D).dot(W[:,:,k,it]).dot((X[5,1] - m_mean[:,k,it]).reshape(D,1))
