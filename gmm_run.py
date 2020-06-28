@@ -42,6 +42,7 @@ X, latent_true = mvt.draw(K = D, N = N, m = K, gaussian = True)
 # Set starting values for parameters:
 #----------------------------------------
 #seed(12)
+
 MCsim = 20         # MC iterations
 
 ####################
@@ -71,7 +72,7 @@ exp_LL = np.zeros((K,MCsim))
 #------------------
 # Initializations
 #------------------
-seed(42)
+#seed(42)
 
 it = 0
 var_m0 = np.zeros((D,D)) ; np.fill_diagonal(var_m0, 1)
@@ -124,8 +125,12 @@ for n in range(N):
 
     #rho[n,:,it] = exp(log_rho[n,:,it])
     #rho_norm[n,:,it] = rho[n,:,it]/sum(rho[n,:,it])
+    #print('n: {} : {}'.format(n, log_rho[n,:,it]))
     rho_norm[n,:,it] = gmm.exp_normalize(log_rho[n,:,it])     # 10.67
     print('n: {} value: {}'.format(n, rho_norm[n,:,it]))
+    #k = next(ks) ; print(k)
+#n = next(ns); print(n)
+
 
 Ns[:,it] = rho_norm[:,:,it].sum(axis=0)                 # (10.51)
 print(Ns[:,it])
@@ -135,6 +140,7 @@ print(betas[:,it])
 
 nu[:,it] = nu_0 + Ns[:,it] + 1                         # 10.63
 print(nu[:,it])
+
 
 ###########
 # M-step:
@@ -149,6 +155,7 @@ for k in range(K):
 
 print(m_mean[:,:,it])
 
+
 for k in range(K):
     Sk = 0 ;
     for n in range(N): Sk += rho_norm[n,k,it] * (X[n,:] - x_mean[k,:]).reshape(D,1).dot((X[n,:] - x_mean[k,:]).reshape(1,D))/Ns[k,it]
@@ -157,6 +164,8 @@ for k in range(K):
     Wk_inv = W0_inv + Ns[k,it]*S[:,:,k,it] + beta0*Ns[k,it]*((x_mean[k,:] - m0[:,it]).reshape(D,1).dot((x_mean[k,:] - m0[:,it]).reshape(1,D)))/(beta0 + Ns[k,it])  
     W[:,:,k,it] = np.linalg.inv(Wk_inv)    # 10.62
 
+print(S[:,:,:,it])
+print(W[:,:,:,it])
 
 for k in range(K):
 
@@ -192,7 +201,8 @@ for k in range(K):
 ell = .5*exp_LL[:,it].sum(axis=0)      # 10.71
 print(ell)
 
-next(it)
+it = next(its) ; print(it)
+
 
 rho_norm[n,k,it]
 Ns.shape 
